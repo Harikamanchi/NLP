@@ -14,7 +14,8 @@ from nltk.stem import WordNetLemmatizer
 nltk.download('stopwords')
 nltk.download('wordnet')
 
-stop_words = set(stopwords.words('english'))
+stop_words = set(stopwords.words('english')) - {"not", "no", "never"}
+
 lemmatizer = WordNetLemmatizer()
 
 # =========================
