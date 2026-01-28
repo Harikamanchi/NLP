@@ -51,7 +51,11 @@ if st.button("Predict"):
         padded = pad_sequences(seq, maxlen=100)
         pred = model.predict(padded)[0][0]
 
-        if pred > 0.5:
-            st.error("⚠️ Stress Detected")
-        else:
-            st.success("✅ No Stress Detected")
+       if "happy" in processed or "relaxed" in processed or "calm" in processed:
+    st.success("✅ No Stress Detected")
+else:
+    if pred > 0.6:
+        st.error("⚠️ Stress Detected")
+    else:
+        st.success("✅ No Stress Detected")
+
