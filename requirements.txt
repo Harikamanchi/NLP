@@ -1,0 +1,6 @@
+streamlit
+tensorflow-cpu==2.13.0
+nltk
+numpy
+scikit-learn
+imbalanced-learn
