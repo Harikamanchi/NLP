@@ -6,17 +6,14 @@ import numpy as np
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from nltk.corpus import stopwords
-from nltk.stem import WordNetLemmatizer
 
 # =========================
 # NLTK setup
 # =========================
 nltk.download('stopwords')
-nltk.download('wordnet')
 
+# IMPORTANT: keep negation words
 stop_words = set(stopwords.words('english')) - {"not", "no", "never"}
-
-lemmatizer = WordNetLemmatizer()
 
 # =========================
 # Load model & tokenizer
@@ -28,14 +25,12 @@ with open("tokenizer.pkl", "rb") as f:
 
 # =========================
 # Text preprocessing
-# (MUST match training)
 # =========================
 def preprocess_text(text):
     text = text.lower()
     text = re.sub(r'[^a-z\s]', '', text)
     words = text.split()
     words = [w for w in words if w not in stop_words]
-    words = [lemmatizer.lemmatize(w) for w in words]
     return " ".join(words)
 
 # =========================
@@ -51,7 +46,6 @@ user_input = st.text_area(
     placeholder="Type a sentence like: I am feeling calm and relaxed today..."
 )
 
-# Threshold (tuned to reduce false stress alerts)
 THRESHOLD = 0.6
 
 if st.button("Predict"):
@@ -71,14 +65,17 @@ if st.button("Predict"):
         # Show probability
         st.write(f"🔍 **Stress Probability:** `{pred_prob:.2f}`")
 
-        # Decision
-        if pred_prob >= THRESHOLD:
+        # 🔥 RULE-BASED OVERRIDE FOR SHORT NEGATIVE SENTENCES
+        NEGATIVE_PHRASES = ["not good", "not okay", "not fine", "feeling low"]
+
+        if any(p in processed for p in NEGATIVE_PHRASES):
             st.error("⚠️ Stress Detected")
         else:
-            st.success("✅ No Stress Detected")
+            if pred_prob >= THRESHOLD:
+                st.error("⚠️ Stress Detected")
+            else:
+                st.success("✅ No Stress Detected")
 
-        # Optional explanation
         st.caption(
             "ℹ️ Prediction is probability-based. Borderline cases may vary due to model limitations."
         )
-
