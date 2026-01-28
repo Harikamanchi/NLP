@@ -2,60 +2,82 @@ import streamlit as st
 import pickle
 import re
 import nltk
+import numpy as np
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 
+# =========================
+# NLTK setup
+# =========================
 nltk.download('stopwords')
 nltk.download('wordnet')
-
-# Load model
-model = load_model("stress_bilstm_model.h5")
-
-# Load tokenizer
-with open("tokenizer.pkl", "rb") as f:
-    tokenizer = pickle.load(f)
 
 stop_words = set(stopwords.words('english'))
 lemmatizer = WordNetLemmatizer()
 
-def clean_basic(text):
+# =========================
+# Load model & tokenizer
+# =========================
+model = load_model("stress_bilstm_model.h5")
+
+with open("tokenizer.pkl", "rb") as f:
+    tokenizer = pickle.load(f)
+
+# =========================
+# Text preprocessing
+# (MUST match training)
+# =========================
+def preprocess_text(text):
     text = text.lower()
     text = re.sub(r'[^a-z\s]', '', text)
-    return text
+    words = text.split()
+    words = [w for w in words if w not in stop_words]
+    words = [lemmatizer.lemmatize(w) for w in words]
+    return " ".join(words)
 
-def remove_stopwords(text):
-    return " ".join([w for w in text.split() if w not in stop_words])
-
-def lemmatize_text(text):
-    return " ".join([lemmatizer.lemmatize(w) for w in text.split()])
-
-def preprocess(text):
-    text = clean_basic(text)
-    text = remove_stopwords(text)
-    text = lemmatize_text(text)
-    return text
+# =========================
+# Streamlit UI
+# =========================
+st.set_page_config(page_title="Stress Detection using NLP", layout="centered")
 
 st.title("🧠 Stress Detection using NLP")
 st.write("Enter a sentence to detect stress level")
 
-user_input = st.text_area("Enter text here")
+user_input = st.text_area(
+    "Enter text here",
+    placeholder="Type a sentence like: I am feeling calm and relaxed today..."
+)
+
+# Threshold (tuned to reduce false stress alerts)
+THRESHOLD = 0.6
 
 if st.button("Predict"):
     if user_input.strip() == "":
         st.warning("Please enter some text")
     else:
-        processed = preprocess(user_input)
+        # Preprocess
+        processed = preprocess_text(user_input)
+
+        # Tokenize & pad
         seq = tokenizer.texts_to_sequences([processed])
         padded = pad_sequences(seq, maxlen=100)
-        pred = model.predict(padded)[0][0]
 
-       if "happy" in processed or "relaxed" in processed or "calm" in processed:
-    st.success("✅ No Stress Detected")
-else:
-    if pred > 0.6:
-        st.error("⚠️ Stress Detected")
-    else:
-        st.success("✅ No Stress Detected")
+        # Predict probability
+        pred_prob = model.predict(padded)[0][0]
+
+        # Show probability
+        st.write(f"🔍 **Stress Probability:** `{pred_prob:.2f}`")
+
+        # Decision
+        if pred_prob >= THRESHOLD:
+            st.error("⚠️ Stress Detected")
+        else:
+            st.success("✅ No Stress Detected")
+
+        # Optional explanation
+        st.caption(
+            "ℹ️ Prediction is probability-based. Borderline cases may vary due to model limitations."
+        )
 
